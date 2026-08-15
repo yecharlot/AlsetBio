@@ -61,3 +61,16 @@ func TestIPFSCreateTransitionVerify(t *testing.T) {
 		t.Fatalf("verify: %+v err=%v", view, err)
 	}
 }
+
+func TestStats(t *testing.T) {
+	dir := t.TempDir()
+	svc := NewService(NewStore(&memBackend{}, dir))
+	_, err := svc.Create(CreateInput{Type: "water", Actor: "a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	st, err := svc.Stats()
+	if err != nil || st.Total != 1 || st.Received != 1 {
+		t.Fatalf("stats=%+v err=%v", st, err)
+	}
+}

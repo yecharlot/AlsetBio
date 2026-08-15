@@ -2,9 +2,12 @@ package node
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"sync"
+
+	qrcode "github.com/skip2/go-qrcode"
 
 	"redalset/internal/labflow"
 )
@@ -40,6 +43,8 @@ func (n *NodoAlset) registerLabFlow(extra map[string]http.HandlerFunc) {
 	extra["/api/labflow/samples/"] = n.handleLabflowSampleByID
 	extra["/api/labflow/verify/"] = n.handleLabflowVerify
 	extra["/api/labflow/root"] = n.handleLabflowRoot
+	extra["/api/labflow/stats"] = n.handleLabflowStats
+	extra["/api/labflow/qr/"] = n.handleLabflowQR
 	extra["/verify/"] = n.handleLabflowVerifyPage
 }
 
@@ -202,4 +207,38 @@ func (n *NodoAlset) handleLabflowVerifyPage(w http.ResponseWriter, r *http.Reque
 <p class="muted" style="margin-top:1rem">LabFlow root CID</p><code>` + view.RootCID + `</code>
 </div></body></html>`
 	_, _ = w.Write([]byte(html))
+}
+
+func (n *NodoAlset) handleLabflowStats(w http.ResponseWriter, r *http.Request) {
+	st, err := n.labflowService().Stats()
+	if err != nil {
+		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, 200, st)
+}
+
+func (n *NodoAlset) handleLabflowQR(w http.ResponseWriter, r *http.Request) {
+	id := strings.TrimPrefix(r.URL.Path, "/api/labflow/qr/")
+	id = strings.Trim(id, "/")
+	if id == "" {
+		http.Error(w, "missing id", 400)
+		return
+	}
+	scheme := "http"
+	if r.TLS != nil {
+		scheme = "https"
+	}
+	if xf := r.Header.Get("X-Forwarded-Proto"); xf != "" {
+		scheme = xf
+	}
+	verifyURL := fmt.Sprintf("%s://%s/verify/%s", scheme, r.Host, id)
+	png, err := qrcode.Encode(verifyURL, qrcode.Medium, 256)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = w.Write(png)
 }

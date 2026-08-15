@@ -228,3 +228,43 @@ func (s *Service) Verify(id string) (*VerifyView, error) {
 		Certificate: "VERIFIED",
 	}, nil
 }
+
+// Stats counts samples by status for the dashboard.
+type Stats struct {
+	Received   int    `json:"received"`
+	Assigned   int    `json:"assigned"`
+	InProgress int    `json:"in_progress"`
+	QCReview   int    `json:"qc_review"`
+	Released   int    `json:"released"`
+	Flagged    int    `json:"flagged"`
+	Archived   int    `json:"archived"`
+	Total      int    `json:"total"`
+	RootCID    string `json:"root_cid"`
+}
+
+func (s *Service) Stats() (Stats, error) {
+	list, err := s.store.ListSamples()
+	if err != nil {
+		return Stats{}, err
+	}
+	st := Stats{RootCID: s.store.RootCID(), Total: len(list)}
+	for _, sample := range list {
+		switch sample.Status {
+		case StatusReceived:
+			st.Received++
+		case StatusAssigned:
+			st.Assigned++
+		case StatusInProgress:
+			st.InProgress++
+		case StatusQCReview:
+			st.QCReview++
+		case StatusReleased:
+			st.Released++
+		case StatusFlagged:
+			st.Flagged++
+		case StatusArchived:
+			st.Archived++
+		}
+	}
+	return st, nil
+}
