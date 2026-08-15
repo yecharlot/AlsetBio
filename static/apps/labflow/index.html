@@ -3,202 +3,581 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Alset LabFlow</title>
+  <meta name="theme-color" content="#0a0f14" />
+  <title>LabFlow · AlsetBio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <style>
-    :root { --bg:#0b0c10; --card:#161822; --text:#e8e9ef; --muted:#8b90a0; --accent:#6c63ff; --ok:#25d366; --gold:#f4b400; --danger:#ff6b6b; }
+    :root {
+      --bg: #070b10;
+      --bg2: #0c1219;
+      --surface: #111820;
+      --surface2: #161e28;
+      --border: rgba(148, 163, 184, 0.12);
+      --border-strong: rgba(148, 163, 184, 0.22);
+      --text: #e8eef4;
+      --muted: #8b9aab;
+      --accent: #2dd4bf;
+      --accent-dim: rgba(45, 212, 191, 0.12);
+      --accent-2: #38bdf8;
+      --warn: #fbbf24;
+      --danger: #f87171;
+      --ok: #34d399;
+      --violet: #a78bfa;
+      --radius: 14px;
+      --shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+      --font: "DM Sans", system-ui, sans-serif;
+      --mono: "JetBrains Mono", ui-monospace, monospace;
+    }
     * { box-sizing: border-box; }
-    body { margin:0; font-family: system-ui, sans-serif; background:var(--bg); color:var(--text); padding:1rem; }
-    header { max-width:1100px; margin:0 auto 1rem; display:flex; flex-wrap:wrap; gap:.75rem; align-items:center; justify-content:space-between; }
-    h1 { font-size:1.25rem; margin:0; }
-    .badge { background:rgba(108,99,255,.15); color:var(--accent); font-size:.7rem; font-weight:700; padding:.2rem .55rem; border-radius:999px; }
-    .sub { color:var(--muted); font-size:.85rem; width:100%; }
-    .cid { font-size:.72rem; color:var(--gold); word-break:break-all; }
-    .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:.6rem; max-width:1100px; margin:0 auto 1rem; }
-    .stat { background:var(--card); border-radius:12px; padding:.85rem; border:1px solid rgba(255,255,255,.06); text-align:center; }
-    .stat .n { font-size:1.4rem; font-weight:800; }
-    .stat .l { font-size:.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
-    .grid { display:grid; gap:1rem; grid-template-columns:1fr; max-width:1100px; margin:0 auto; }
-    @media(min-width:900px){ .grid { grid-template-columns:1fr 1.2fr; } }
-    .card { background:var(--card); border-radius:14px; padding:1.1rem; border:1px solid rgba(255,255,255,.06); }
-    label { display:block; font-size:.72rem; color:var(--muted); margin:.45rem 0 .15rem; }
-    input, select, button { width:100%; padding:.55rem .7rem; border-radius:8px; border:1px solid rgba(255,255,255,.1); background:#0f1118; color:var(--text); }
-    button { background:var(--accent); border:none; font-weight:700; cursor:pointer; margin-top:.55rem; }
-    button.secondary { background:#2a2d3a; }
-    button.danger { background:#5a2030; }
-    .row { padding:.55rem 0; border-bottom:1px solid rgba(255,255,255,.06); font-size:.88rem; cursor:pointer; }
-    .row:hover { background:rgba(255,255,255,.03); }
-    .status { font-size:.7rem; font-weight:700; padding:.15rem .4rem; border-radius:6px; background:#2a2d3a; }
-    pre { white-space:pre-wrap; font-size:.72rem; background:#0f1118; padding:.7rem; border-radius:8px; overflow:auto; max-height:260px; }
-    .qrwrap { text-align:center; margin-top:.75rem; }
-    .qrwrap img { background:#fff; border-radius:8px; padding:8px; max-width:180px; }
-    .timeline { font-size:.8rem; }
-    .timeline div { padding:.35rem 0; border-left:2px solid var(--accent); margin-left:.3rem; padding-left:.7rem; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font);
+      color: var(--text);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(45, 212, 191, 0.08), transparent 55%),
+        radial-gradient(900px 500px at 100% 0%, rgba(56, 189, 248, 0.07), transparent 50%),
+        linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
+      background-attachment: fixed;
+    }
+    a { color: var(--accent-2); }
+
+    .shell { max-width: 1120px; margin: 0 auto; padding: 1.25rem 1.1rem 2.5rem; }
+
+    /* Top bar */
+    .topbar {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+      gap: 1rem; margin-bottom: 1.5rem;
+      padding: 0.85rem 1.1rem;
+      background: rgba(17, 24, 32, 0.72);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      backdrop-filter: blur(12px);
+      box-shadow: var(--shadow);
+    }
+    .brand { display: flex; align-items: center; gap: 0.85rem; }
+    .brand-mark {
+      width: 42px; height: 42px; border-radius: 12px;
+      background: linear-gradient(145deg, rgba(45,212,191,0.25), rgba(56,189,248,0.15));
+      border: 1px solid rgba(45, 212, 191, 0.35);
+      display: grid; place-items: center;
+      font-weight: 700; font-size: 0.95rem; color: var(--accent);
+      letter-spacing: -0.02em;
+    }
+    .brand h1 {
+      margin: 0; font-size: 1.15rem; font-weight: 700; letter-spacing: -0.02em;
+    }
+    .brand p { margin: 0.1rem 0 0; font-size: 0.78rem; color: var(--muted); }
+    .top-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+    .pill {
+      font-size: 0.68rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+      padding: 0.28rem 0.65rem; border-radius: 999px;
+      background: var(--accent-dim); color: var(--accent);
+      border: 1px solid rgba(45, 212, 191, 0.25);
+    }
+    .root-line {
+      font-family: var(--mono); font-size: 0.68rem; color: var(--warn);
+      max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+
+    /* Stats */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.65rem;
+      margin-bottom: 1.15rem;
+    }
+    @media (max-width: 800px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 420px) { .stats { grid-template-columns: 1fr 1fr; } }
+    .stat {
+      position: relative; overflow: hidden;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.95rem 0.9rem;
+      transition: border-color 0.2s, transform 0.15s;
+    }
+    .stat:hover { border-color: var(--border-strong); transform: translateY(-1px); }
+    .stat .n {
+      font-size: 1.55rem; font-weight: 700; letter-spacing: -0.03em;
+      line-height: 1.1; margin-bottom: 0.25rem;
+    }
+    .stat .l {
+      font-size: 0.68rem; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    .stat[data-k="released"] .n { color: var(--ok); }
+    .stat[data-k="flagged"] .n { color: var(--danger); }
+    .stat[data-k="in_progress"] .n { color: var(--accent-2); }
+    .stat[data-k="qc_review"] .n { color: var(--violet); }
+
+    /* Layout */
+    .grid {
+      display: grid; gap: 1rem;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 920px) {
+      .grid { grid-template-columns: 0.95fr 1.15fr; }
+      .span-2 { grid-column: 1 / -1; }
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.15rem 1.2rem;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+    }
+    .card h2 {
+      margin: 0 0 0.85rem;
+      font-size: 0.95rem;
+      font-weight: 650;
+      letter-spacing: -0.01em;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .card h2::before {
+      content: "";
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 10px var(--accent);
+    }
+
+    label {
+      display: block;
+      font-size: 0.7rem; font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.05em;
+      margin: 0.55rem 0 0.3rem;
+    }
+    .field-row {
+      display: grid; gap: 0.55rem;
+      grid-template-columns: 1fr 1fr;
+    }
+    @media (max-width: 520px) { .field-row { grid-template-columns: 1fr; } }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 0.6rem 0.75rem;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--bg2);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 0.9rem;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: rgba(45, 212, 191, 0.45);
+      box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.12);
+    }
+
+    .btn-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.85rem; }
+    button, .btn {
+      appearance: none; border: none; cursor: pointer;
+      font-family: var(--font); font-weight: 600; font-size: 0.85rem;
+      padding: 0.6rem 1rem; border-radius: 10px;
+      background: linear-gradient(135deg, #2dd4bf, #14b8a6);
+      color: #042f2e;
+      transition: transform 0.12s, filter 0.12s, opacity 0.12s;
+    }
+    button:hover { filter: brightness(1.05); }
+    button:active { transform: scale(0.98); }
+    button.secondary {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border-strong);
+    }
+    button.ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    /* Sample list */
+    .list { max-height: 340px; overflow: auto; margin: 0 -0.25rem; padding: 0 0.25rem; }
+    .row {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem;
+      padding: 0.75rem 0.65rem;
+      border-radius: 10px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .row:last-child { border-bottom: none; }
+    .row:hover, .row.active { background: rgba(45, 212, 191, 0.06); }
+    .row strong { font-size: 0.9rem; font-weight: 650; }
+    .row .meta { font-size: 0.75rem; color: var(--muted); margin-top: 0.2rem; }
+    .cid {
+      font-family: var(--mono); font-size: 0.65rem; color: var(--warn);
+      word-break: break-all; margin-top: 0.25rem;
+    }
+    .status {
+      flex-shrink: 0;
+      font-size: 0.65rem; font-weight: 700;
+      padding: 0.22rem 0.5rem; border-radius: 6px;
+      letter-spacing: 0.03em;
+      background: rgba(148, 163, 184, 0.12);
+      color: var(--muted);
+    }
+    .status.RECEIVED { background: rgba(148,163,184,0.15); color: #cbd5e1; }
+    .status.ASSIGNED { background: rgba(56,189,248,0.15); color: #7dd3fc; }
+    .status.IN_PROGRESS { background: rgba(45,212,191,0.15); color: #5eead4; }
+    .status.QC_REVIEW { background: rgba(167,139,250,0.15); color: #c4b5fd; }
+    .status.RELEASED { background: rgba(52,211,153,0.15); color: #6ee7b7; }
+    .status.FLAGGED { background: rgba(248,113,113,0.15); color: #fca5a5; }
+    .status.ARCHIVED { background: rgba(100,116,139,0.2); color: #94a3b8; }
+
+    .empty {
+      text-align: center; padding: 1.75rem 1rem; color: var(--muted); font-size: 0.88rem;
+    }
+
+    /* Detail panel */
+    .detail-grid {
+      display: grid; gap: 1rem;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 720px) {
+      .detail-grid { grid-template-columns: 1.2fr 0.8fr; align-items: start; }
+    }
+    .timeline {
+      margin: 0.75rem 0 0;
+      padding-left: 0.25rem;
+    }
+    .timeline .ev {
+      position: relative;
+      padding: 0.55rem 0 0.55rem 1rem;
+      border-left: 2px solid rgba(45, 212, 191, 0.35);
+      font-size: 0.8rem;
+    }
+    .timeline .ev::before {
+      content: "";
+      position: absolute; left: -5px; top: 0.85rem;
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px rgba(45, 212, 191, 0.5);
+    }
+    .timeline .ev strong { font-weight: 650; }
+    .timeline .ev .t { color: var(--muted); font-size: 0.72rem; }
+
+    .qr-panel {
+      text-align: center;
+      padding: 1rem;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+    .qr-panel img {
+      width: 160px; height: 160px;
+      background: #fff; border-radius: 10px; padding: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    }
+    .qr-panel p { margin: 0.65rem 0 0; font-size: 0.75rem; color: var(--muted); }
+
+    pre.out {
+      margin: 0.75rem 0 0;
+      padding: 0.75rem 0.85rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      line-height: 1.45;
+      color: #94a3b8;
+      max-height: 200px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .toast {
+      position: fixed; bottom: 1.25rem; right: 1.25rem;
+      padding: 0.75rem 1.1rem;
+      background: var(--surface2);
+      border: 1px solid var(--border-strong);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      font-size: 0.85rem; font-weight: 500;
+      opacity: 0; pointer-events: none;
+      transform: translateY(8px);
+      transition: opacity 0.25s, transform 0.25s;
+      z-index: 50;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.err { border-color: rgba(248,113,113,0.4); color: #fecaca; }
+    .toast.ok { border-color: rgba(52,211,153,0.4); color: #a7f3d0; }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; }
+    }
   </style>
 </head>
 <body>
-  <header>
-    <div>
-      <span class="badge">AlsetBio · LabFlow</span>
-      <h1>Laboratory sample workflow</h1>
-      <div class="sub">Persistencia IPFS (CID) en el Nodo Alset · root: <span class="cid" id="rootCid">—</span></div>
-    </div>
-    <button class="secondary" style="width:auto;padding:.5rem 1rem" onclick="refreshAll()">Actualizar</button>
-  </header>
-
-  <div class="stats" id="stats"></div>
-
-  <div class="grid">
-    <div class="card">
-      <h2 style="margin:0 0 .5rem;font-size:1rem">Nueva muestra</h2>
-      <label>Workflow</label>
-      <select id="workflow">
-        <option value="default">default</option>
-        <option value="water-testing">water-testing</option>
-        <option value="clinical">clinical</option>
-      </select>
-      <label>Tipo</label><input id="type" value="blood" />
-      <label>Org / Lab</label><input id="org" value="lab-default" />
-      <label>Cliente</label><input id="client" value="client-demo" />
-      <label>Ubicación</label><input id="loc" value="Receiving-A" />
-      <label>Actor</label><input id="actor" value="tech-1" />
-      <label>Rol (dev)</label>
-      <select id="role">
-        <option>TECHNICIAN</option>
-        <option>REVIEWER</option>
-        <option>LAB_MANAGER</option>
-        <option>LAB_ADMIN</option>
-        <option>CLIENT</option>
-      </select>
-      <button onclick="createSample()">Crear (IPFS)</button>
-      <pre id="createOut">—</pre>
-    </div>
-
-    <div class="card">
-      <h2 style="margin:0 0 .5rem;font-size:1rem">Muestras</h2>
-      <div id="sampleList"><p class="sub">Cargando…</p></div>
-    </div>
-
-    <div class="card" style="grid-column:1/-1">
-      <h2 style="margin:0 0 .5rem;font-size:1rem">Detalle · transición · QR</h2>
-      <label>Sample ID</label><input id="sid" placeholder="smp_..." />
-      <label>Nuevo estado</label>
-      <select id="toStatus">
-        <option>ASSIGNED</option>
-        <option>IN_PROGRESS</option>
-        <option>QC_REVIEW</option>
-        <option>RELEASED</option>
-        <option>FLAGGED</option>
-        <option>ARCHIVED</option>
-      </select>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem">
-        <button onclick="doTransition()">Transicionar</button>
-        <button class="secondary" onclick="showDetail()">Detalle</button>
-        <button class="secondary" onclick="verify()">Verificar</button>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">LF</div>
+        <div>
+          <h1>LabFlow</h1>
+          <p>Muestras · custodia · verificación</p>
+        </div>
       </div>
-      <div class="qrwrap" id="qrBox" style="display:none">
-        <img id="qrImg" alt="QR verify" />
-        <div class="sub">Escanea para abrir la página de verificación pública</div>
+      <div class="top-actions">
+        <span class="pill">AlsetBio</span>
+        <span class="root-line" id="rootCid" title="Root CID">root —</span>
+        <button type="button" class="secondary" style="width:auto" onclick="refreshAll()">Actualizar</button>
       </div>
-      <div class="timeline" id="timeline"></div>
-      <pre id="detailOut">—</pre>
+    </header>
+
+    <div class="stats" id="stats"></div>
+
+    <div class="grid">
+      <section class="card">
+        <h2>Nueva muestra</h2>
+        <div class="field-row">
+          <div>
+            <label>Workflow</label>
+            <select id="workflow">
+              <option value="default">default</option>
+              <option value="water-testing">water-testing</option>
+              <option value="clinical">clinical</option>
+            </select>
+          </div>
+          <div>
+            <label>Tipo</label>
+            <input id="type" value="blood" />
+          </div>
+        </div>
+        <div class="field-row">
+          <div>
+            <label>Organización</label>
+            <input id="org" value="lab-default" />
+          </div>
+          <div>
+            <label>Cliente</label>
+            <input id="client" value="client-demo" />
+          </div>
+        </div>
+        <div class="field-row">
+          <div>
+            <label>Ubicación</label>
+            <input id="loc" value="Receiving-A" />
+          </div>
+          <div>
+            <label>Actor</label>
+            <input id="actor" value="tech-1" />
+          </div>
+        </div>
+        <label>Rol</label>
+        <select id="role">
+          <option>TECHNICIAN</option>
+          <option>REVIEWER</option>
+          <option>LAB_MANAGER</option>
+          <option>LAB_ADMIN</option>
+          <option>CLIENT</option>
+        </select>
+        <div class="btn-row">
+          <button type="button" onclick="createSample()">Registrar muestra</button>
+        </div>
+        <pre class="out" id="createOut">Listo para registrar.</pre>
+      </section>
+
+      <section class="card">
+        <h2>Muestras en el laboratorio</h2>
+        <div class="list" id="sampleList">
+          <div class="empty">Cargando…</div>
+        </div>
+      </section>
+
+      <section class="card span-2">
+        <h2>Detalle y transición</h2>
+        <div class="detail-grid">
+          <div>
+            <div class="field-row">
+              <div>
+                <label>Sample ID</label>
+                <input id="sid" placeholder="smp_…" />
+              </div>
+              <div>
+                <label>Nuevo estado</label>
+                <select id="toStatus">
+                  <option>ASSIGNED</option>
+                  <option>IN_PROGRESS</option>
+                  <option>QC_REVIEW</option>
+                  <option>RELEASED</option>
+                  <option>FLAGGED</option>
+                  <option>ARCHIVED</option>
+                </select>
+              </div>
+            </div>
+            <div class="btn-row">
+              <button type="button" onclick="doTransition()">Aplicar transición</button>
+              <button type="button" class="secondary" onclick="showDetail()">Ver detalle</button>
+              <button type="button" class="ghost" onclick="verify()">Verificar</button>
+            </div>
+            <div class="timeline" id="timeline"></div>
+            <pre class="out" id="detailOut">Selecciona una muestra de la lista.</pre>
+          </div>
+          <div class="qr-panel" id="qrBox" style="display:none">
+            <img id="qrImg" alt="Código QR de verificación" width="160" height="160" />
+            <p>Escanea para abrir la verificación pública</p>
+          </div>
+        </div>
+      </section>
     </div>
   </div>
 
+  <div class="toast" id="toast"></div>
+
 <script>
+function toast(msg, kind) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (kind ? ' ' + kind : '');
+  clearTimeout(window.__tt);
+  window.__tt = setTimeout(() => { el.className = 'toast'; }, 2800);
+}
 function labHeaders(extra) {
   const h = Object.assign({
-    'X-Lab-Role': (document.getElementById('role')||{}).value || 'TECHNICIAN',
-    'X-Lab-Org': (document.getElementById('org')||{}).value || 'lab-default',
-    'X-Lab-Actor': (document.getElementById('actor')||{}).value || 'dev-user'
-  }, extra||{});
+    'X-Lab-Role': (document.getElementById('role') || {}).value || 'TECHNICIAN',
+    'X-Lab-Org': (document.getElementById('org') || {}).value || 'lab-default',
+    'X-Lab-Actor': (document.getElementById('actor') || {}).value || 'dev-user'
+  }, extra || {});
   const tok = localStorage.getItem('labflow_token');
   if (tok) h['Authorization'] = 'Bearer ' + tok;
   return h;
 }
 async function j(url, opt) {
   opt = opt || {};
-  opt.headers = Object.assign(labHeaders(opt.headers), opt.headers||{});
+  opt.headers = Object.assign(labHeaders(), opt.headers || {});
   const r = await fetch(url, opt);
   const t = await r.text();
   try { return { ok: r.ok, status: r.status, data: JSON.parse(t) }; }
   catch { return { ok: r.ok, status: r.status, data: t }; }
 }
-function esc(s){ return String(s||'').replace(/[<>&]/g, c=>({ '<':'&lt;','>':'&gt;','&':'&amp;' }[c])); }
+function esc(s) {
+  return String(s || '').replace(/[<>&]/g, c => ({ '<':'&lt;','>':'&gt;','&':'&amp;' }[c]));
+}
 
 async function loadStats() {
   const res = await j('/api/labflow/stats');
   const s = res.data || {};
-  document.getElementById('rootCid').textContent = s.root_cid || '(vacío)';
+  document.getElementById('rootCid').textContent = s.root_cid ? ('root ' + s.root_cid.slice(0, 18) + '…') : 'root —';
+  document.getElementById('rootCid').title = s.root_cid || '';
   const cells = [
-    ['Total', s.total], ['Received', s.received], ['Assigned', s.assigned],
-    ['In progress', s.in_progress], ['QC', s.qc_review], ['Released', s.released],
-    ['Flagged', s.flagged], ['Archived', s.archived]
+    ['total', 'Total', s.total],
+    ['received', 'Received', s.received],
+    ['assigned', 'Assigned', s.assigned],
+    ['in_progress', 'In progress', s.in_progress],
+    ['qc_review', 'QC review', s.qc_review],
+    ['released', 'Released', s.released],
+    ['flagged', 'Flagged', s.flagged],
+    ['archived', 'Archived', s.archived]
   ];
-  document.getElementById('stats').innerHTML = cells.map(([l,n]) =>
-    `<div class="stat"><div class="n">${n??0}</div><div class="l">${l}</div></div>`).join('');
+  document.getElementById('stats').innerHTML = cells.map(([k, l, n]) =>
+    `<div class="stat" data-k="${k}"><div class="n">${n ?? 0}</div><div class="l">${l}</div></div>`
+  ).join('');
 }
 
 async function createSample() {
   const body = {
-    type: type.value, workflow_id: workflow.value, org_id: org.value, client_id: client.value,
-    location: loc.value, actor: actor.value
+    type: type.value,
+    workflow_id: workflow.value,
+    org_id: org.value,
+    client_id: client.value,
+    location: loc.value,
+    actor: actor.value
   };
   const res = await j('/api/labflow/samples', {
-    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
   });
   createOut.textContent = JSON.stringify(res.data, null, 2);
-  if (res.data && res.data.sample) {
+  if (res.ok && res.data && res.data.sample) {
     sid.value = res.data.sample.id;
     showQR(res.data.sample.id);
+    toast('Muestra registrada', 'ok');
+    refreshAll();
+  } else {
+    toast((res.data && res.data.error) || 'No se pudo crear', 'err');
   }
-  refreshAll();
 }
 
 async function loadSamples() {
   const res = await j('/api/labflow/samples');
   const list = (res.data && res.data.samples) || [];
-  sampleList.innerHTML = list.length ? list.map(s =>
-    `<div class="row" onclick="selectSample('${esc(s.id)}')">
-      <strong>${esc(s.external_id)}</strong> <span class="status">${esc(s.status)}</span>
-      <div class="cid">${esc(s.id)}</div>
-    </div>`).join('') : '<p class="sub">Sin muestras</p>';
+  if (!list.length) {
+    sampleList.innerHTML = '<div class="empty">Aún no hay muestras. Registra la primera a la izquierda.</div>';
+    return;
+  }
+  sampleList.innerHTML = list.map(s =>
+    `<div class="row" data-id="${esc(s.id)}" onclick="selectSample('${esc(s.id)}')">
+      <div>
+        <strong>${esc(s.external_id)}</strong>
+        <div class="meta">${esc(s.type || '—')} · ${esc(s.workflow_id || 'default')} · ${esc(s.current_location || '')}</div>
+        <div class="cid">${esc(s.id)}</div>
+      </div>
+      <span class="status ${esc(s.status)}">${esc(s.status)}</span>
+    </div>`
+  ).join('');
 }
 
 function selectSample(id) {
   sid.value = id;
+  document.querySelectorAll('.row').forEach(el => {
+    el.classList.toggle('active', el.getAttribute('data-id') === id);
+  });
   showDetail();
   showQR(id);
 }
 
 function showQR(id) {
+  if (!id) return;
   qrBox.style.display = 'block';
   qrImg.src = '/api/labflow/qr/' + encodeURIComponent(id) + '?t=' + Date.now();
 }
 
 async function doTransition() {
   const id = sid.value.trim();
+  if (!id) { toast('Indica un sample id', 'err'); return; }
   const res = await j('/api/labflow/samples/' + encodeURIComponent(id) + '/transition', {
-    method:'POST', headers:{'Content-Type':'application/json'},
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ to_status: toStatus.value, actor: actor.value })
   });
   detailOut.textContent = JSON.stringify(res.data, null, 2);
-  refreshAll();
-  if (res.ok) showDetail();
+  if (res.ok) {
+    toast('Estado → ' + toStatus.value, 'ok');
+    refreshAll();
+    showDetail();
+  } else {
+    toast((res.data && res.data.error) || 'Transición rechazada', 'err');
+  }
 }
 
 async function showDetail() {
   const id = sid.value.trim();
+  if (!id) return;
   const res = await j('/api/labflow/samples/' + encodeURIComponent(id));
   detailOut.textContent = JSON.stringify(res.data, null, 2);
   const evs = (res.data && res.data.events) || [];
-  timeline.innerHTML = evs.map(e =>
-    `<div><strong>${esc(e.type)}</strong> ${esc(e.previous_state||'—')} → ${esc(e.new_state||'')}
-     <div class="cid">${esc(e.evidence_ref||'')}</div></div>`).join('') || '';
+  timeline.innerHTML = evs.length
+    ? evs.map(e =>
+      `<div class="ev"><strong>${esc(e.type)}</strong>
+        <div class="t">${esc(e.previous_state || '—')} → ${esc(e.new_state || '')}</div>
+        <div class="cid">${esc(e.evidence_ref || '')}</div></div>`
+    ).join('')
+    : '';
   showQR(id);
 }
 
 async function verify() {
   const id = sid.value.trim();
+  if (!id) return;
   const res = await j('/api/labflow/verify/' + encodeURIComponent(id));
   detailOut.textContent = JSON.stringify(res.data, null, 2);
   window.open('/verify/' + encodeURIComponent(id), '_blank');

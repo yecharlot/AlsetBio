@@ -49,7 +49,7 @@ Gestión del ciclo de vida de muestras:
 6. Roles de laboratorio y alcance por organización
 7. Workflows intercambiables (`default`, `water-testing`, `clinical`)
 
-UI: `/w/labflow.app.ans`
+UI: `/w/labflow.app.ans` (panel con estadísticas, listado, timeline y QR)
 
 ### Runtime compartido (base técnica)
 

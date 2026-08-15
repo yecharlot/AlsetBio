@@ -44,7 +44,7 @@ Modo estricto: `LABFLOW_REQUIRE_AUTH=true`.
 
 ## UI
 
-`/w/labflow.app.ans` — altas, listado, transiciones, contadores, timeline y QR.
+`/w/labflow.app.ans` — panel de laboratorio: cabecera con root CID, contadores por estado, alta de muestras, listado con badges de estado, timeline de custodia y QR de verificación.
 
 ## Límites conscientes
 
