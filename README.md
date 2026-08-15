@@ -65,6 +65,29 @@ go mod download
 go run ./cmd/prisma-tec
 ```
 
+## LabFlow + IPFS (en acción)
+
+Las muestras y eventos de custodia se persisten como **bloques content-addressed (CID)** en el blockstore del nodo (`GenerarCID` / `/api/ipfs/*`).
+
+```bash
+# Crear muestra
+curl -s -X POST http://localhost:8080/api/labflow/samples \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"blood","org_id":"lab-1","actor":"tech-1","location":"Receiving-A"}'
+
+# Transición de estado
+curl -s -X POST http://localhost:8080/api/labflow/samples/<id>/transition \
+  -H 'Content-Type: application/json' \
+  -d '{"to_status":"ASSIGNED","actor":"tech-1"}'
+
+# Verificar
+curl -s http://localhost:8080/api/labflow/verify/<id>
+# UI
+open http://localhost:8080/w/labflow.app.ans
+```
+
+Cada cambio actualiza un **root CID** de índice LabFlow (`GET /api/labflow/root`).
+
 ## Configuración
 
 Copia `.env.example` → `.env`. Variables principales:

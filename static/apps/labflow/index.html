@@ -5,25 +5,133 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Alset LabFlow</title>
   <style>
-    :root { --bg:#0b0c10; --card:#161822; --text:#e8e9ef; --muted:#8b90a0; --accent:#6c63ff; --ok:#25d366; }
+    :root { --bg:#0b0c10; --card:#161822; --text:#e8e9ef; --muted:#8b90a0; --accent:#6c63ff; --ok:#25d366; --gold:#f4b400; }
     * { box-sizing: border-box; }
-    body { margin:0; font-family: system-ui, sans-serif; background:var(--bg); color:var(--text);
-      min-height:100vh; display:flex; align-items:center; justify-content:center; padding:1.5rem; }
-    .card { background:var(--card); border-radius:16px; padding:2rem; max-width:420px; width:100%;
-      border:1px solid rgba(255,255,255,0.06); }
-    h1 { margin:0 0 0.5rem; font-size:1.4rem; }
-    p { color:var(--muted); line-height:1.5; }
-    .badge { display:inline-block; background:rgba(108,99,255,0.15); color:var(--accent);
-      font-size:0.75rem; font-weight:700; padding:0.25rem 0.6rem; border-radius:999px; margin-bottom:1rem; }
-    code { color:var(--ok); font-size:0.85rem; }
+    body { margin:0; font-family: system-ui, sans-serif; background:var(--bg); color:var(--text); padding:1.25rem; }
+    h1 { font-size:1.35rem; margin:0 0 .25rem; }
+    .sub { color:var(--muted); margin-bottom:1.25rem; font-size:.9rem; }
+    .grid { display:grid; gap:1rem; grid-template-columns:1fr; max-width:960px; margin:0 auto; }
+    @media(min-width:800px){ .grid { grid-template-columns:1fr 1fr; } }
+    .card { background:var(--card); border-radius:14px; padding:1.25rem; border:1px solid rgba(255,255,255,.06); }
+    label { display:block; font-size:.75rem; color:var(--muted); margin:.5rem 0 .2rem; }
+    input, select, button, textarea { width:100%; padding:.55rem .7rem; border-radius:8px; border:1px solid rgba(255,255,255,.1); background:#0f1118; color:var(--text); }
+    button { background:var(--accent); border:none; font-weight:700; cursor:pointer; margin-top:.75rem; }
+    button.secondary { background:#2a2d3a; }
+    code, .cid { font-size:.72rem; color:var(--gold); word-break:break-all; }
+    .ok { color:var(--ok); font-weight:700; }
+    .list item, .row { padding:.6rem 0; border-bottom:1px solid rgba(255,255,255,.06); font-size:.9rem; }
+    .badge { display:inline-block; background:rgba(108,99,255,.15); color:var(--accent); font-size:.7rem; font-weight:700; padding:.2rem .5rem; border-radius:999px; }
+    pre { white-space:pre-wrap; font-size:.75rem; background:#0f1118; padding:.75rem; border-radius:8px; overflow:auto; max-height:280px; }
   </style>
 </head>
 <body>
-  <div class="card">
-    <div class="badge">AlsetBio · LabFlow</div>
-    <h1>Laboratory sample workflow</h1>
-    <p>Base del vertical de laboratorio sobre el Nodo Alset. Dominio de muestras, cadena de custodia y verificación en construcción sobre este nodo.</p>
-    <p><code>/w/labflow.app.ans</code></p>
+  <div class="grid">
+    <div class="card" style="grid-column:1/-1">
+      <span class="badge">AlsetBio · LabFlow</span>
+      <h1>Sample workflow · IPFS persistence</h1>
+      <p class="sub">Cada muestra y evento se guarda como bloque content-addressed (CID) en el Nodo Alset.</p>
+      <div>Root index CID: <span class="cid" id="rootCid">—</span></div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-top:0;font-size:1.05rem">Nueva muestra</h2>
+      <label>Tipo</label>
+      <input id="type" value="blood" />
+      <label>Org / Lab</label>
+      <input id="org" value="lab-default" />
+      <label>Cliente</label>
+      <input id="client" value="client-demo" />
+      <label>Ubicación</label>
+      <input id="loc" value="Receiving-A" />
+      <label>Actor</label>
+      <input id="actor" value="tech-1" />
+      <button onclick="createSample()">Crear en IPFS</button>
+      <pre id="createOut">—</pre>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-top:0;font-size:1.05rem">Muestras</h2>
+      <button class="secondary" onclick="loadSamples()">Refrescar</button>
+      <div id="sampleList"></div>
+    </div>
+
+    <div class="card" style="grid-column:1/-1">
+      <h2 style="margin-top:0;font-size:1.05rem">Detalle / transición</h2>
+      <label>Sample ID</label>
+      <input id="sid" placeholder="smp_..." />
+      <label>Nuevo estado</label>
+      <select id="toStatus">
+        <option>ASSIGNED</option>
+        <option>IN_PROGRESS</option>
+        <option>QC_REVIEW</option>
+        <option>RELEASED</option>
+        <option>FLAGGED</option>
+        <option>ARCHIVED</option>
+      </select>
+      <button onclick="doTransition()">Aplicar transición</button>
+      <button class="secondary" onclick="showDetail()">Ver detalle + eventos</button>
+      <button class="secondary" onclick="verify()">Verificar</button>
+      <pre id="detailOut">—</pre>
+    </div>
   </div>
+<script>
+async function j(url, opt) {
+  const r = await fetch(url, opt);
+  const t = await r.text();
+  try { return { ok: r.ok, status: r.status, data: JSON.parse(t) }; }
+  catch { return { ok: r.ok, status: r.status, data: t }; }
+}
+async function refreshRoot() {
+  const res = await j('/api/labflow/root');
+  document.getElementById('rootCid').textContent = (res.data && res.data.root_cid) || '(vacío hasta la primera muestra)';
+}
+async function createSample() {
+  const body = {
+    type: document.getElementById('type').value,
+    org_id: document.getElementById('org').value,
+    client_id: document.getElementById('client').value,
+    location: document.getElementById('loc').value,
+    actor: document.getElementById('actor').value
+  };
+  const res = await j('/api/labflow/samples', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+  });
+  document.getElementById('createOut').textContent = JSON.stringify(res.data, null, 2);
+  if (res.data && res.data.sample) document.getElementById('sid').value = res.data.sample.id;
+  refreshRoot(); loadSamples();
+}
+async function loadSamples() {
+  const res = await j('/api/labflow/samples');
+  const list = (res.data && res.data.samples) || [];
+  document.getElementById('sampleList').innerHTML = list.length ? list.map(s =>
+    `<div class="row"><strong>${s.external_id}</strong> · ${s.status}<br/><span class="cid">${s.id}</span></div>`
+  ).join('') : '<p class="sub">Sin muestras aún</p>';
+  refreshRoot();
+}
+async function doTransition() {
+  const id = document.getElementById('sid').value.trim();
+  const to = document.getElementById('toStatus').value;
+  const res = await j('/api/labflow/samples/' + encodeURIComponent(id) + '/transition', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ to_status: to, actor: document.getElementById('actor').value })
+  });
+  document.getElementById('detailOut').textContent = JSON.stringify(res.data, null, 2);
+  loadSamples();
+}
+async function showDetail() {
+  const id = document.getElementById('sid').value.trim();
+  const res = await j('/api/labflow/samples/' + encodeURIComponent(id));
+  document.getElementById('detailOut').textContent = JSON.stringify(res.data, null, 2);
+}
+async function verify() {
+  const id = document.getElementById('sid').value.trim();
+  const res = await j('/api/labflow/verify/' + encodeURIComponent(id));
+  document.getElementById('detailOut').textContent = JSON.stringify(res.data, null, 2);
+  if (res.data && res.data.sample) {
+    window.open('/verify/' + encodeURIComponent(id), '_blank');
+  }
+}
+refreshRoot(); loadSamples();
+</script>
 </body>
 </html>
