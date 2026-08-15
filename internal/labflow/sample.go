@@ -20,6 +20,7 @@ type Sample struct {
 	ID             string            `json:"id"`
 	ExternalID     string            `json:"external_id"`
 	Type           string            `json:"type"`
+	WorkflowID     string            `json:"workflow_id"`
 	Status         Status            `json:"status"`
 	OrgID          string            `json:"org_id"`
 	ClientID       string            `json:"client_id,omitempty"`

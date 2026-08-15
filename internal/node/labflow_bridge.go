@@ -93,6 +93,7 @@ func (n *NodoAlset) registerLabFlow(extra map[string]http.HandlerFunc) {
 	extra["/api/labflow/stats"] = n.handleLabflowStats
 	extra["/api/labflow/qr/"] = n.handleLabflowQR
 	extra["/api/labflow/auth/token"] = n.handleLabflowAuthToken
+	extra["/api/labflow/workflows"] = n.handleLabflowWorkflows
 	extra["/verify/"] = n.handleLabflowVerifyPage
 }
 
@@ -408,4 +409,13 @@ func (n *NodoAlset) handleLabflowAuthToken(w http.ResponseWriter, r *http.Reques
 		"usage":      "Authorization: Bearer <token>",
 		"note":       "Pass X-Lab-Org for org scope when calling LabFlow APIs",
 	})
+}
+
+func (n *NodoAlset) handleLabflowWorkflows(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	list := n.labflowService().Workflows().List()
+	writeJSON(w, 200, map[string]interface{}{"workflows": list, "count": len(list)})
 }

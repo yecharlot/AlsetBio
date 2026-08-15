@@ -50,6 +50,12 @@
   <div class="grid">
     <div class="card">
       <h2 style="margin:0 0 .5rem;font-size:1rem">Nueva muestra</h2>
+      <label>Workflow</label>
+      <select id="workflow">
+        <option value="default">default</option>
+        <option value="water-testing">water-testing</option>
+        <option value="clinical">clinical</option>
+      </select>
       <label>Tipo</label><input id="type" value="blood" />
       <label>Org / Lab</label><input id="org" value="lab-default" />
       <label>Cliente</label><input id="client" value="client-demo" />
@@ -134,7 +140,7 @@ async function loadStats() {
 
 async function createSample() {
   const body = {
-    type: type.value, org_id: org.value, client_id: client.value,
+    type: type.value, workflow_id: workflow.value, org_id: org.value, client_id: client.value,
     location: loc.value, actor: actor.value
   };
   const res = await j('/api/labflow/samples', {

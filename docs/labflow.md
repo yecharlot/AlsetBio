@@ -47,3 +47,14 @@ AlsetBio / LabFlow **no es un dispositivo médico** y **no proporciona diagnóst
 Auth: `Authorization: Bearer <token>` desde `POST /api/labflow/auth/token`.
 En desarrollo, sin token: cabeceras `X-Lab-Role`, `X-Lab-Org`, `X-Lab-Actor`.
 Producción: `LABFLOW_REQUIRE_AUTH=true`.
+
+
+## Workflows configurables
+
+| ID | Uso |
+|----|-----|
+| `default` | Ciclo genérico LabFlow |
+| `water-testing` | Permite retest QC → IN_PROGRESS |
+| `clinical` | FLAGGED solo puede ir a ARCHIVED |
+
+Crear muestra con `workflow_id`. Listar: `GET /api/labflow/workflows`.

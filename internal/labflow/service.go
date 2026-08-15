@@ -10,11 +10,16 @@ var sampleSeq uint64
 
 // Service orchestrates sample lifecycle with IPFS-backed persistence.
 type Service struct {
-	store *Store
+	store     *Store
+	workflows *Registry
 }
 
 func NewService(store *Store) *Service {
-	return &Service{store: store}
+	return &Service{store: store, workflows: NewRegistry()}
+}
+
+func (s *Service) Workflows() *Registry {
+	return s.workflows
 }
 
 func (s *Service) RootCID() string {
@@ -27,8 +32,9 @@ func nextExternalID() string {
 }
 
 type CreateInput struct {
-	Type     string            `json:"type"`
-	OrgID    string            `json:"org_id"`
+	Type       string            `json:"type"`
+	WorkflowID string            `json:"workflow_id"`
+	OrgID      string            `json:"org_id"`
 	ClientID string            `json:"client_id"`
 	Location string            `json:"location"`
 	Actor    string            `json:"actor"`
@@ -46,10 +52,18 @@ func (s *Service) Create(in CreateInput) (*CreateResult, error) {
 	now := time.Now().UTC()
 	id := fmt.Sprintf("smp_%d_%d", now.UnixNano(), atomic.AddUint64(&sampleSeq, 1))
 	ext := nextExternalID()
+	wfID := in.WorkflowID
+	if wfID == "" {
+		wfID = "default"
+	}
+	if _, ok := s.workflows.Get(wfID); !ok {
+		return nil, fmt.Errorf("unknown workflow: %s", wfID)
+	}
 	sample := &Sample{
 		ID:              id,
 		ExternalID:      ext,
 		Type:            in.Type,
+		WorkflowID:      wfID,
 		Status:          StatusReceived,
 		OrgID:           in.OrgID,
 		ClientID:        in.ClientID,
@@ -120,7 +134,8 @@ func (s *Service) Transition(sampleID string, in TransitionInput) (*Sample, stri
 	if err != nil {
 		return nil, "", "", err
 	}
-	newStatus, err := Transition(sample.Status, in.ToStatus)
+	wf, _ := s.workflows.Get(sample.WorkflowID)
+	newStatus, err := TransitionWithWorkflow(wf, sample.Status, in.ToStatus)
 	if err != nil {
 		return nil, "", "", err
 	}
