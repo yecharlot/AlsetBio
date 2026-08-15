@@ -48,6 +48,15 @@ func (n *NodoAlset) labflowPrincipal(r *http.Request) (labflow.Principal, int, s
 	auth := r.Header.Get("Authorization")
 	if strings.HasPrefix(strings.ToLower(auth), "bearer ") {
 		tok := strings.TrimSpace(auth[7:])
+		// LabFlow session first
+		if sess, ok := n.labflowService().Sessions().Get(tok); ok {
+			return labflow.Principal{
+				AgentID: sess.UserID,
+				Roles:   labflow.NormalizeRoles([]string{sess.Role}),
+				OrgID:   sess.OrgID,
+			}, 0, ""
+		}
+		// Fallback: Alset node token
 		token, err := n.validarToken(tok)
 		if err != nil {
 			return labflow.Principal{}, 401, err.Error()
@@ -93,6 +102,10 @@ func (n *NodoAlset) registerLabFlow(extra map[string]http.HandlerFunc) {
 	extra["/api/labflow/stats"] = n.handleLabflowStats
 	extra["/api/labflow/qr/"] = n.handleLabflowQR
 	extra["/api/labflow/auth/token"] = n.handleLabflowAuthToken
+	extra["/api/labflow/auth/register"] = n.handleLabflowRegister
+	extra["/api/labflow/auth/login"] = n.handleLabflowLogin
+	extra["/api/labflow/auth/logout"] = n.handleLabflowLogout
+	extra["/api/labflow/auth/me"] = n.handleLabflowMe
 	extra["/api/labflow/workflows"] = n.handleLabflowWorkflows
 	extra["/api/labflow/license"] = n.handleLabflowLicense
 	extra["/api/labflow/export/samples"] = n.handleLabflowExportSamples
@@ -538,4 +551,88 @@ func (n *NodoAlset) handleLabflowReport(w http.ResponseWriter, r *http.Request) 
 	html := labflow.BuildCustodyReportHTML(sample, evs, verifyURL)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_, _ = w.Write([]byte(html))
+}
+
+func (n *NodoAlset) handleLabflowRegister(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	var in labflow.RegisterInput
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		writeJSON(w, 400, map[string]string{"error": "invalid json"})
+		return
+	}
+	u, err := n.labflowService().Users().Register(in)
+	if err != nil {
+		writeJSON(w, 400, map[string]string{"error": err.Error()})
+		return
+	}
+	sess, err := n.labflowService().Sessions().Create(u, 72)
+	if err != nil {
+		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, 201, map[string]interface{}{
+		"user":    u,
+		"token":   sess.Token,
+		"session": sess,
+	})
+}
+
+func (n *NodoAlset) handleLabflowLogin(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	var req struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, 400, map[string]string{"error": "invalid json"})
+		return
+	}
+	u, err := n.labflowService().Users().Authenticate(req.Email, req.Password)
+	if err != nil {
+		writeJSON(w, 401, map[string]string{"error": err.Error()})
+		return
+	}
+	sess, err := n.labflowService().Sessions().Create(u, 72)
+	if err != nil {
+		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, 200, map[string]interface{}{
+		"user":    u,
+		"token":   sess.Token,
+		"session": sess,
+	})
+}
+
+func (n *NodoAlset) handleLabflowLogout(w http.ResponseWriter, r *http.Request) {
+	auth := r.Header.Get("Authorization")
+	if strings.HasPrefix(strings.ToLower(auth), "bearer ") {
+		n.labflowService().Sessions().Revoke(strings.TrimSpace(auth[7:]))
+	}
+	writeJSON(w, 200, map[string]string{"status": "logged_out"})
+}
+
+func (n *NodoAlset) handleLabflowMe(w http.ResponseWriter, r *http.Request) {
+	auth := r.Header.Get("Authorization")
+	if !strings.HasPrefix(strings.ToLower(auth), "bearer ") {
+		writeJSON(w, 401, map[string]string{"error": "not authenticated"})
+		return
+	}
+	tok := strings.TrimSpace(auth[7:])
+	sess, ok := n.labflowService().Sessions().Get(tok)
+	if !ok {
+		writeJSON(w, 401, map[string]string{"error": "session expired"})
+		return
+	}
+	st := n.labflowService().LicenseStatus()
+	writeJSON(w, 200, map[string]interface{}{
+		"session": sess,
+		"license": st,
+	})
 }

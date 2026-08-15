@@ -136,7 +136,11 @@ curl -s -X POST http://localhost:8080/api/labflow/samples/<id>/transition \
   -d '{"to_status":"ASSIGNED"}'
 ```
 
-### Token (cuando `LABFLOW_REQUIRE_AUTH=true`)
+### Cuentas multi-empresa
+
+Registro/login en la UI o API `/api/labflow/auth/register` y `/login`. Cada empresa tiene su `org_id`.
+
+### Token de nodo (legado)
 
 ```bash
 curl -s -X POST http://localhost:8080/api/labflow/auth/token \

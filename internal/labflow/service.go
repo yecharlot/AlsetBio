@@ -13,6 +13,8 @@ type Service struct {
 	store     *Store
 	workflows *Registry
 	licenses  *LicenseStore
+	users     *UserStore
+	sessions  *SessionStore
 }
 
 func NewService(store *Store) *Service {
@@ -21,8 +23,14 @@ func NewService(store *Store) *Service {
 		store:     store,
 		workflows: NewRegistry(),
 		licenses:  NewLicenseStore(dataDir),
+		users:     NewUserStore(dataDir),
+		sessions:  NewSessionStore(dataDir),
 	}
 }
+
+func (s *Service) Users() *UserStore { return s.users }
+func (s *Service) Sessions() *SessionStore { return s.sessions }
+
 
 func (s *Service) Licenses() *LicenseStore { return s.licenses }
 

@@ -49,3 +49,8 @@ Modo estricto: `LABFLOW_REQUIRE_AUTH=true`.
 ## Límites conscientes
 
 No incluye diagnóstico clínico, descubrimiento de fármacos ni acoplamiento profundo a instrumentos. Eso queda para fases posteriores del producto.
+
+
+## Cuentas
+
+register/login/logout/me bajo /api/labflow/auth/*
