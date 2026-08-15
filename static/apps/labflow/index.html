@@ -55,6 +55,14 @@
       <label>Cliente</label><input id="client" value="client-demo" />
       <label>Ubicación</label><input id="loc" value="Receiving-A" />
       <label>Actor</label><input id="actor" value="tech-1" />
+      <label>Rol (dev)</label>
+      <select id="role">
+        <option>TECHNICIAN</option>
+        <option>REVIEWER</option>
+        <option>LAB_MANAGER</option>
+        <option>LAB_ADMIN</option>
+        <option>CLIENT</option>
+      </select>
       <button onclick="createSample()">Crear (IPFS)</button>
       <pre id="createOut">—</pre>
     </div>
@@ -91,7 +99,19 @@
   </div>
 
 <script>
+function labHeaders(extra) {
+  const h = Object.assign({
+    'X-Lab-Role': (document.getElementById('role')||{}).value || 'TECHNICIAN',
+    'X-Lab-Org': (document.getElementById('org')||{}).value || 'lab-default',
+    'X-Lab-Actor': (document.getElementById('actor')||{}).value || 'dev-user'
+  }, extra||{});
+  const tok = localStorage.getItem('labflow_token');
+  if (tok) h['Authorization'] = 'Bearer ' + tok;
+  return h;
+}
 async function j(url, opt) {
+  opt = opt || {};
+  opt.headers = Object.assign(labHeaders(opt.headers), opt.headers||{});
   const r = await fetch(url, opt);
   const t = await r.text();
   try { return { ok: r.ok, status: r.status, data: JSON.parse(t) }; }

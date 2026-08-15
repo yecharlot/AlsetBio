@@ -32,3 +32,18 @@ Transiciones arbitrarias no permitidas.
 ## Disclaimer
 
 AlsetBio / LabFlow **no es un dispositivo médico** y **no proporciona diagnóstico médico**.
+
+
+## Roles (MVP)
+
+| Rol | Puede |
+|-----|-------|
+| LAB_ADMIN | Todo |
+| LAB_MANAGER | Todo en su ámbito |
+| TECHNICIAN | Crear, ASSIGNED, IN_PROGRESS, FLAGGED |
+| REVIEWER | QC_REVIEW, RELEASED, FLAGGED, ARCHIVED |
+| CLIENT | Ver solo sus muestras (client_id) |
+
+Auth: `Authorization: Bearer <token>` desde `POST /api/labflow/auth/token`.
+En desarrollo, sin token: cabeceras `X-Lab-Role`, `X-Lab-Org`, `X-Lab-Actor`.
+Producción: `LABFLOW_REQUIRE_AUTH=true`.
