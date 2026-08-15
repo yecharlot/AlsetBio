@@ -203,6 +203,38 @@ go test ./internal/labflow/ -count=1
 
 ---
 
+
+## Comercialización (piloto de pago)
+
+| Plan | Precio orientativo | Límite de muestras |
+|------|--------------------|--------------------|
+| **Trial** | $0 | 50 |
+| **Pilot** | **$49 / mes** | 500 |
+| **Lab** | **$149 / mes** | 5 000 |
+| **Network** | **$399 / mes** | Ilimitado |
+
+Flujo de cobro recomendado:
+
+1. El cliente paga por Stripe, PayPal o transferencia.
+2. Tú emites una clave y el cliente la activa en la UI (sección *Licencia y planes*) o por API.
+3. También puedes fijar en `.env`: `LABFLOW_LICENSE_KEY`, `LABFLOW_PLAN`, `LABFLOW_ORG_ID`.
+
+```bash
+# Estado
+curl -s http://localhost:8080/api/labflow/license
+
+# Activar (rol manager/admin)
+curl -s -X POST http://localhost:8080/api/labflow/license \
+  -H "Content-Type: application/json" -H "X-Lab-Role: LAB_MANAGER" \
+  -d '{"key":"CLIENTE-2026-001","plan":"pilot","org_id":"lab-acme","org_name":"ACME Labs"}'
+
+# Exportar
+curl -s http://localhost:8080/api/labflow/export/samples -H "X-Lab-Role: LAB_MANAGER" -o samples.csv
+```
+
+Informe imprimible / PDF del navegador: `/api/labflow/report/<sample_id>`
+
+
 ## Roadmap
 
 | Fase | Contenido |

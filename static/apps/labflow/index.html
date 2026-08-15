@@ -317,6 +317,8 @@
 </head>
 <body>
   <div class="shell">
+    <div id="licBanner" style="display:none;margin-bottom:1rem;padding:0.85rem 1.1rem;border-radius:12px;border:1px solid rgba(251,191,36,0.35);background:rgba(251,191,36,0.08);font-size:0.88rem;color:#fde68a"></div>
+
     <header class="topbar">
       <div class="brand">
         <div class="brand-mark">LF</div>
@@ -387,6 +389,12 @@
 
       <section class="card">
         <h2>Muestras en el laboratorio</h2>
+        <div class="field-row" style="margin-bottom:0.65rem">
+          <div><label>Buscar</label><input id="sampleSearch" placeholder="ID, tipo, estado…" oninput="filterSamples()" /></div>
+          <div style="display:flex;align-items:flex-end;gap:0.5rem">
+            <button type="button" class="secondary" style="width:auto" onclick="exportSamples()">Export CSV</button>
+          </div>
+        </div>
         <div class="list" id="sampleList">
           <div class="empty">Cargando…</div>
         </div>
@@ -417,6 +425,8 @@
               <button type="button" onclick="doTransition()">Aplicar transición</button>
               <button type="button" class="secondary" onclick="showDetail()">Ver detalle</button>
               <button type="button" class="ghost" onclick="verify()">Verificar</button>
+              <button type="button" class="ghost" onclick="openReport()">Informe PDF</button>
+              <button type="button" class="ghost" onclick="exportEvents()">CSV eventos</button>
             </div>
             <div class="timeline" id="timeline"></div>
             <pre class="out" id="detailOut">Selecciona una muestra de la lista.</pre>
@@ -426,6 +436,29 @@
             <p>Escanea para abrir la verificación pública</p>
           </div>
         </div>
+      </section>
+    <section class="card span-2" style="margin-top:1rem">
+        <h2>Licencia y planes</h2>
+        <p style="color:var(--muted);font-size:0.88rem;margin:0 0 0.75rem;line-height:1.5">
+          Trial gratuito (límite de muestras). Para cobrar y operar en producción: activa un plan
+          <strong>Pilot ($49/mes)</strong>, <strong>Lab ($149/mes)</strong> o <strong>Network ($399/mes)</strong>.
+          El cobro lo gestionas tú (Stripe, PayPal, transferencia); aquí solo se activa la clave.
+        </p>
+        <div class="field-row">
+          <div><label>Clave de licencia</label><input id="licKey" placeholder="LF-XXXX-XXXX-XXXX o texto secreto" /></div>
+          <div><label>Plan</label>
+            <select id="licPlan"><option value="pilot">pilot · $49</option><option value="lab">lab · $149</option><option value="network">network · $399</option><option value="trial">trial</option></select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div><label>Org ID</label><input id="licOrg" value="lab-default" /></div>
+          <div><label>Nombre del lab</label><input id="licOrgName" value="Demo Laboratory" /></div>
+        </div>
+        <div class="btn-row">
+          <button type="button" onclick="activateLicense()">Activar licencia</button>
+          <button type="button" class="secondary" onclick="loadLicense()">Ver estado</button>
+        </div>
+        <pre class="out" id="licOut">—</pre>
       </section>
     </div>
   </div>
@@ -507,24 +540,6 @@ async function createSample() {
   }
 }
 
-async function loadSamples() {
-  const res = await j('/api/labflow/samples');
-  const list = (res.data && res.data.samples) || [];
-  if (!list.length) {
-    sampleList.innerHTML = '<div class="empty">Aún no hay muestras. Registra la primera a la izquierda.</div>';
-    return;
-  }
-  sampleList.innerHTML = list.map(s =>
-    `<div class="row" data-id="${esc(s.id)}" onclick="selectSample('${esc(s.id)}')">
-      <div>
-        <strong>${esc(s.external_id)}</strong>
-        <div class="meta">${esc(s.type || '—')} · ${esc(s.workflow_id || 'default')} · ${esc(s.current_location || '')}</div>
-        <div class="cid">${esc(s.id)}</div>
-      </div>
-      <span class="status ${esc(s.status)}">${esc(s.status)}</span>
-    </div>`
-  ).join('');
-}
 
 function selectSample(id) {
   sid.value = id;
@@ -583,9 +598,114 @@ async function verify() {
   window.open('/verify/' + encodeURIComponent(id), '_blank');
 }
 
+let __samplesCache = [];
+
+async function loadLicense() {
+  const res = await j('/api/labflow/license');
+  const s = res.data || {};
+  licOut.textContent = JSON.stringify(s, null, 2);
+  const b = document.getElementById('licBanner');
+  if (!s.active) {
+    b.style.display = 'block';
+    b.textContent = (s.message || 'Trial') + ' · Plan ' + (s.plan || 'trial') + ' · ' + (s.used_samples||0) + '/' + (s.max_samples||'∞') + ' muestras';
+  } else {
+    b.style.display = 'block';
+    b.style.borderColor = 'rgba(52,211,153,0.35)';
+    b.style.background = 'rgba(52,211,153,0.08)';
+    b.style.color = '#a7f3d0';
+    b.textContent = 'Licencia ' + s.plan + ' activa' + (s.org_name ? ' · ' + s.org_name : '') + ' · ' + (s.used_samples||0) + (s.max_samples ? '/' + s.max_samples : '') + ' muestras';
+  }
+}
+
+async function activateLicense() {
+  role.value = 'LAB_MANAGER';
+  const res = await j('/api/labflow/license', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      key: licKey.value,
+      plan: licPlan.value,
+      org_id: licOrg.value,
+      org_name: licOrgName.value
+    })
+  });
+  licOut.textContent = JSON.stringify(res.data, null, 2);
+  if (res.ok) toast('Licencia activada', 'ok');
+  else toast((res.data && res.data.error) || 'Error', 'err');
+  loadLicense();
+}
+
+function exportSamples() {
+  const qs = '';
+  const a = document.createElement('a');
+  a.href = '/api/labflow/export/samples';
+  a.download = 'labflow-samples.csv';
+  // fetch with headers then blob
+  j('/api/labflow/export/samples').then(async () => {
+    const r = await fetch('/api/labflow/export/samples', { headers: labHeaders() });
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    a.href = url;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+}
+
+function exportEvents() {
+  const id = sid.value.trim();
+  if (!id) { toast('Selecciona muestra', 'err'); return; }
+  fetch('/api/labflow/export/events/' + encodeURIComponent(id), { headers: labHeaders() })
+    .then(r => r.blob())
+    .then(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'events-' + id + '.csv'; a.click();
+      URL.revokeObjectURL(url);
+    });
+}
+
+function openReport() {
+  const id = sid.value.trim();
+  if (!id) { toast('Selecciona muestra', 'err'); return; }
+  window.open('/api/labflow/report/' + encodeURIComponent(id), '_blank');
+}
+
+function filterSamples() {
+  const q = (sampleSearch.value || '').toLowerCase();
+  const list = __samplesCache.filter(s => {
+    const blob = [s.external_id, s.id, s.type, s.status, s.workflow_id, s.current_location].join(' ').toLowerCase();
+    return !q || blob.includes(q);
+  });
+  renderSampleList(list);
+}
+
+function renderSampleList(list) {
+  if (!list.length) {
+    sampleList.innerHTML = '<div class="empty">Sin resultados.</div>';
+    return;
+  }
+  sampleList.innerHTML = list.map(s =>
+    `<div class="row" data-id="${esc(s.id)}" onclick="selectSample('${esc(s.id)}')">
+      <div>
+        <strong>${esc(s.external_id)}</strong>
+        <div class="meta">${esc(s.type || '—')} · ${esc(s.workflow_id || 'default')} · ${esc(s.current_location || '')}</div>
+        <div class="cid">${esc(s.id)}</div>
+      </div>
+      <span class="status ${esc(s.status)}">${esc(s.status)}</span>
+    </div>`
+  ).join('');
+}
+
+async function loadSamples() {
+  const res = await j('/api/labflow/samples');
+  __samplesCache = (res.data && res.data.samples) || [];
+  filterSamples();
+}
+
 async function refreshAll() {
   await loadStats();
   await loadSamples();
+  await loadLicense();
 }
 refreshAll();
 </script>

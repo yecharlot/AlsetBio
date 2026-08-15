@@ -12,11 +12,28 @@ var sampleSeq uint64
 type Service struct {
 	store     *Store
 	workflows *Registry
+	licenses  *LicenseStore
 }
 
 func NewService(store *Store) *Service {
-	return &Service{store: store, workflows: NewRegistry()}
+	dataDir := "alset_data"
+	return &Service{
+		store:     store,
+		workflows: NewRegistry(),
+		licenses:  NewLicenseStore(dataDir),
+	}
 }
+
+func (s *Service) Licenses() *LicenseStore { return s.licenses }
+
+func (s *Service) LicenseStatus() LicenseStatus {
+	n := 0
+	if list, err := s.store.ListSamples(); err == nil {
+		n = len(list)
+	}
+	return s.licenses.Status(n)
+}
+
 
 func (s *Service) Workflows() *Registry {
 	return s.workflows
@@ -49,6 +66,11 @@ type CreateResult struct {
 }
 
 func (s *Service) Create(in CreateInput) (*CreateResult, error) {
+	if list, err := s.store.ListSamples(); err == nil {
+		if err := s.licenses.AllowCreate(len(list)); err != nil {
+			return nil, err
+		}
+	}
 	now := time.Now().UTC()
 	id := fmt.Sprintf("smp_%d_%d", now.UnixNano(), atomic.AddUint64(&sampleSeq, 1))
 	ext := nextExternalID()

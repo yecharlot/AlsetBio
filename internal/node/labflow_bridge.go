@@ -94,6 +94,10 @@ func (n *NodoAlset) registerLabFlow(extra map[string]http.HandlerFunc) {
 	extra["/api/labflow/qr/"] = n.handleLabflowQR
 	extra["/api/labflow/auth/token"] = n.handleLabflowAuthToken
 	extra["/api/labflow/workflows"] = n.handleLabflowWorkflows
+	extra["/api/labflow/license"] = n.handleLabflowLicense
+	extra["/api/labflow/export/samples"] = n.handleLabflowExportSamples
+	extra["/api/labflow/export/events/"] = n.handleLabflowExportEvents
+	extra["/api/labflow/report/"] = n.handleLabflowReport
 	extra["/verify/"] = n.handleLabflowVerifyPage
 }
 
@@ -418,4 +422,120 @@ func (n *NodoAlset) handleLabflowWorkflows(w http.ResponseWriter, r *http.Reques
 	}
 	list := n.labflowService().Workflows().List()
 	writeJSON(w, 200, map[string]interface{}{"workflows": list, "count": len(list)})
+}
+
+func (n *NodoAlset) handleLabflowLicense(w http.ResponseWriter, r *http.Request) {
+	svc := n.labflowService()
+	switch r.Method {
+	case http.MethodGet:
+		writeJSON(w, 200, svc.LicenseStatus())
+	case http.MethodPost:
+		p, code, msg := n.labflowPrincipal(r)
+		if code != 0 {
+			writeJSON(w, code, map[string]string{"error": msg})
+			return
+		}
+		if !p.IsAdmin() && !p.IsManager() {
+			writeJSON(w, 403, map[string]string{"error": "only LAB_ADMIN or LAB_MANAGER can activate licenses"})
+			return
+		}
+		var req struct {
+			Key     string `json:"key"`
+			Plan    string `json:"plan"`
+			OrgID   string `json:"org_id"`
+			OrgName string `json:"org_name"`
+			Days    int    `json:"days"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeJSON(w, 400, map[string]string{"error": "invalid json"})
+			return
+		}
+		lic, err := svc.Licenses().Activate(req.Key, req.Plan, req.OrgID, req.OrgName, req.Days)
+		if err != nil {
+			writeJSON(w, 400, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, 200, map[string]interface{}{"license": lic, "status": svc.LicenseStatus()})
+	default:
+		http.Error(w, "method not allowed", 405)
+	}
+}
+
+func (n *NodoAlset) handleLabflowExportSamples(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	p, code, msg := n.labflowPrincipal(r)
+	if code != 0 {
+		writeJSON(w, code, map[string]string{"error": msg})
+		return
+	}
+	list, err := n.labflowService().List()
+	if err != nil {
+		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		return
+	}
+	filtered := make([]labflow.Sample, 0, len(list))
+	for i := range list {
+		if p.CanViewSample(&list[i]) {
+			filtered = append(filtered, list[i])
+		}
+	}
+	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+	w.Header().Set("Content-Disposition", "attachment; filename=labflow-samples.csv")
+	_ = labflow.WriteSamplesCSV(w, filtered)
+}
+
+func (n *NodoAlset) handleLabflowExportEvents(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	p, code, msg := n.labflowPrincipal(r)
+	if code != 0 {
+		writeJSON(w, code, map[string]string{"error": msg})
+		return
+	}
+	id := strings.TrimPrefix(r.URL.Path, "/api/labflow/export/events/")
+	id = strings.Trim(id, "/")
+	sample, _, err := n.labflowService().Get(id)
+	if err != nil {
+		writeJSON(w, 404, map[string]string{"error": err.Error()})
+		return
+	}
+	if !p.CanViewSample(sample) {
+		writeJSON(w, 403, map[string]string{"error": "forbidden"})
+		return
+	}
+	evs, err := n.labflowService().Events(id)
+	if err != nil {
+		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		return
+	}
+	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+	w.Header().Set("Content-Disposition", "attachment; filename=labflow-events-"+id+".csv")
+	_ = labflow.WriteEventsCSV(w, evs)
+}
+
+func (n *NodoAlset) handleLabflowReport(w http.ResponseWriter, r *http.Request) {
+	id := strings.TrimPrefix(r.URL.Path, "/api/labflow/report/")
+	id = strings.Trim(id, "/")
+	sample, _, err := n.labflowService().Get(id)
+	if err != nil {
+		http.Error(w, "not found", 404)
+		return
+	}
+	evs, _ := n.labflowService().Events(id)
+	scheme := "http"
+	if r.TLS != nil {
+		scheme = "https"
+	}
+	if xf := r.Header.Get("X-Forwarded-Proto"); xf != "" {
+		scheme = xf
+	}
+	verifyURL := fmt.Sprintf("%s://%s/verify/%s", scheme, r.Host, id)
+	html := labflow.BuildCustodyReportHTML(sample, evs, verifyURL)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_, _ = w.Write([]byte(html))
 }
