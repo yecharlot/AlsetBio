@@ -1,60 +1,51 @@
-# Alset LabFlow
+# LabFlow
 
-LabFlow gestiona el ciclo de vida operacional de **muestras de laboratorio**.
+LabFlow cubre el trabajo diario con muestras: entrada, estados, custodia y comprobación externa.
 
-## Alcance MVP
+## Flujo habitual
 
-- Identidad de muestra (`BIO-YYYY-######`)
-- Máquina de estados (RECEIVED → … → RELEASED / ARCHIVED, FLAGGED)
-- Cadena de custodia (eventos append-only)
-- Verificación pública controlada (sin datos sensibles)
-- Dashboard operativo
-
-## Fuera de alcance (por ahora)
-
-IA diagnóstica, descubrimiento de fármacos, blockchain, integración profunda con instrumentos.
+1. Crear muestra (`POST /api/labflow/samples` o la UI)
+2. Asignar y procesar (`ASSIGNED` → `IN_PROGRESS`)
+3. Control de calidad (`QC_REVIEW`)
+4. Liberar o marcar incidencia (`RELEASED` / `FLAGGED`)
+5. Archivar cuando corresponda
+6. Compartir verificación (`/verify/<id>` o QR)
 
 ## Estados
 
-```
+```text
 RECEIVED → ASSIGNED → IN_PROGRESS → QC_REVIEW → RELEASED → ARCHIVED
                          ↘ FLAGGED ↙
 ```
 
-Transiciones arbitrarias no permitidas.
+Las flechas concretas dependen del `workflow_id` de la muestra.
 
-## Integración con el Nodo Alset
+## Workflows incluidos
 
-- Identidad de laboratorio / operadores: agentes y tokens del nodo
-- Evidencia: referencias CID / RootCID cuando aplique
-- UI: app estática servida en `/w/labflow.app.ans` (en progreso)
+- **default** — ciclo genérico
+- **water-testing** — permite volver de QC a proceso (reensayo)
+- **clinical** — si queda FLAGGED, solo puede archivarse
 
-## Disclaimer
+Listado: `GET /api/labflow/workflows`
 
-AlsetBio / LabFlow **no es un dispositivo médico** y **no proporciona diagnóstico médico**.
+## Custodia
 
+Cada cambio relevante genera un evento (no se borran; una corrección es un evento nuevo). Los eventos y el snapshot de la muestra viven como bloques con CID.
 
-## Roles (MVP)
+## Roles
 
-| Rol | Puede |
-|-----|-------|
-| LAB_ADMIN | Todo |
-| LAB_MANAGER | Todo en su ámbito |
-| TECHNICIAN | Crear, ASSIGNED, IN_PROGRESS, FLAGGED |
-| REVIEWER | QC_REVIEW, RELEASED, FLAGGED, ARCHIVED |
-| CLIENT | Ver solo sus muestras (client_id) |
+- **LAB_ADMIN** / **LAB_MANAGER** — gestión amplia
+- **TECHNICIAN** — crear y avanzar operación básica
+- **REVIEWER** — QC y liberación
+- **CLIENT** — vista restringida a sus muestras
 
-Auth: `Authorization: Bearer <token>` desde `POST /api/labflow/auth/token`.
-En desarrollo, sin token: cabeceras `X-Lab-Role`, `X-Lab-Org`, `X-Lab-Actor`.
-Producción: `LABFLOW_REQUIRE_AUTH=true`.
+Token: `POST /api/labflow/auth/token`.  
+Modo estricto: `LABFLOW_REQUIRE_AUTH=true`.
 
+## UI
 
-## Workflows configurables
+`/w/labflow.app.ans` — altas, listado, transiciones, contadores, timeline y QR.
 
-| ID | Uso |
-|----|-----|
-| `default` | Ciclo genérico LabFlow |
-| `water-testing` | Permite retest QC → IN_PROGRESS |
-| `clinical` | FLAGGED solo puede ir a ARCHIVED |
+## Límites conscientes
 
-Crear muestra con `workflow_id`. Listar: `GET /api/labflow/workflows`.
+No incluye diagnóstico clínico, descubrimiento de fármacos ni acoplamiento profundo a instrumentos. Eso queda para fases posteriores del producto.

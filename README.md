@@ -1,52 +1,12 @@
 # AlsetBio
 
-**Nodo Alset especializado para laboratorios y biotecnología.**
+Plataforma para laboratorios: muestras, cadena de custodia, verificación y workflows configurables. El código de ejecución (identidad, almacenamiento por CID, API HTTP, red P2P) proviene del diseño abierto documentado en [PrismaTec](https://github.com/yecharlot/PrismaTec); este repositorio es un producto aparte, orientado solo a uso científico y de laboratorio.
 
-AlsetBio es un vertical científico del ecosistema Alset. Parte del mismo runtime de nodo (identidad, agentes, RootCID/CID, API, persistencia, P2P) y lo orienta a:
+**No es un dispositivo médico.** No diagnostica ni prescribe. Sirve para operar el flujo de muestras y dejar evidencia comprobable.
 
-- laboratorios
-- gestión de muestras
-- trazabilidad y cadena de custodia
-- workflows científicos
-- evidencia verificable
+---
 
-> **Independiente de PrismaTec / Alset Sales Hub.**  
-> Este repositorio no forma parte del producto comercial de ventas. PrismaTec permanece como despliegue de Sales Hub.
-
-## Qué es LabFlow
-
-**Alset LabFlow** es la primera aplicación de AlsetBio: ciclo de vida operacional de muestras de laboratorio.
-
-MVP (en construcción / base lista en este repo):
-
-- Sample intake e identidad (`BIO-YYYY-######`)
-- Estados: RECEIVED → ASSIGNED → IN_PROGRESS → QC_REVIEW → RELEASED → ARCHIVED (+ FLAGGED)
-- Chain of custody (eventos append-only)
-- Verificación pública controlada
-- Dashboard de laboratorio
-
-**No es un dispositivo médico.** No realiza diagnóstico clínico ni prescribe tratamientos. Es una plataforma de workflow y procedencia de laboratorio.
-
-## Arquitectura
-
-```
-ALSET NODE (runtime en este repo)
-  identity | agents | RootCID | CID | auth | API | events | persistence | P2P
-       |
-   AlsetBio vertical
-       |
-   LabFlow  (→ luego BioPassport, BioDecision, BioResearch)
-```
-
-El código del nodo vive bajo `cmd/` e `internal/` (mismo diseño modular que el nodo Alset de referencia). LabFlow se añade como dominio y app sin mezclar el vertical de ventas.
-
-## Requisitos
-
-- Go 1.22+ (el módulo declara una versión reciente; usa la del `go.mod`)
-- Docker y Docker Compose (recomendado)
-- Opcional: Supabase (si no, persistencia en disco `alset_data/`)
-
-## Instalación rápida
+## Arranque en cuatro pasos
 
 ```bash
 git clone https://github.com/yecharlot/AlsetBio.git
@@ -55,79 +15,207 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-Abre: [http://localhost:8080](http://localhost:8080)
+Interfaz LabFlow: [http://localhost:8080/w/labflow.app.ans](http://localhost:8080/w/labflow.app.ans)  
+Panel general del runtime: [http://localhost:8080/static/index.html](http://localhost:8080/static/index.html)
 
-### Desarrollo local (sin Docker)
+Sin Docker:
 
 ```bash
 cp .env.example .env
-go mod download
 go run ./cmd/prisma-tec
 ```
 
-## LabFlow + IPFS (en acción)
+Variables útiles en `.env`:
 
-Las muestras y eventos de custodia se persisten como **bloques content-addressed (CID)** en el blockstore del nodo (`GenerarCID` / `/api/ipfs/*`).
+| Variable | Uso |
+|----------|-----|
+| `PORT` | Puerto HTTP (por defecto 8080) |
+| `SUPABASE_URL` / `SUPABASE_SERVICE_KEY` | Persistencia en Supabase (si no, disco local `alset_data/`) |
+| `LABFLOW_REQUIRE_AUTH` | `true` obliga token Bearer en la API LabFlow |
 
-```bash
-# Crear muestra
-curl -s -X POST http://localhost:8080/api/labflow/samples \
-  -H 'Content-Type: application/json' \
-  -d '{"type":"blood","org_id":"lab-1","actor":"tech-1","location":"Receiving-A"}'
+---
 
-# Transición de estado
-curl -s -X POST http://localhost:8080/api/labflow/samples/<id>/transition \
-  -H 'Content-Type: application/json' \
-  -d '{"to_status":"ASSIGNED","actor":"tech-1"}'
+## Qué incluye hoy
 
-# Verificar
-curl -s http://localhost:8080/api/labflow/verify/<id>
-# UI
-open http://localhost:8080/w/labflow.app.ans
+### LabFlow (aplicación principal)
+
+Gestión del ciclo de vida de muestras:
+
+1. Alta de muestra (identificador tipo `BIO-2026-000001`)
+2. Estados controlados (no se puede saltar el flujo a ciegas)
+3. Eventos de custodia (append-only, cada uno con referencia CID)
+4. Verificación pública reducida (`/verify/<id>`)
+5. Código QR hacia la página de verificación
+6. Roles de laboratorio y alcance por organización
+7. Workflows intercambiables (`default`, `water-testing`, `clinical`)
+
+UI: `/w/labflow.app.ans`
+
+### Runtime compartido (base técnica)
+
+Misma base que en PrismaTec, usada aquí como motor:
+
+- API HTTP y apps estáticas bajo `/w/<nombre>.app.ans`
+- Bloques content-addressed (CID) en disco/`blocks` y endpoints `/api/ipfs/*`
+- Agentes, tokens y roles
+- Persistencia local o Supabase
+- Opcional: red libp2p y pulsos entre instancias
+
+Detalle de arquitectura del motor: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) y el repo de origen [PrismaTec](https://github.com/yecharlot/PrismaTec).
+
+### Otras apps en `static/apps`
+
+| App | Ruta | Estado |
+|-----|------|--------|
+| **labflow** | `/w/labflow.app.ans` | Operativa (muestras, custodia, QR, stats) |
+| **config** | `/w/config.app.ans` | Utilidad de configuración heredada del runtime |
+
+LabFlow es el producto; el resto es soporte del entorno de ejecución.
+
+---
+
+## Cómo publicar una aplicación nueva
+
+Cualquier carpeta con un `index.html` en `static/apps/<nombre>/` queda servida en:
+
+```text
+http://localhost:8080/w/<nombre>.app.ans
 ```
 
-Cada cambio actualiza un **root CID** de índice LabFlow (`GET /api/labflow/root`).
+También puedes registrar archivos en caliente:
 
-## Configuración
+```bash
+curl -X POST http://localhost:8080/api/apps/register \
+  -F "appName=mi-app" \
+  -F "files=@index.html"
+```
 
-Copia `.env.example` → `.env`. Variables principales:
+Buenas prácticas:
 
-| Variable | Descripción |
-|----------|-------------|
-| `PORT` | Puerto HTTP (default 8080) |
-| `SUPABASE_URL` | Opcional |
-| `SUPABASE_SERVICE_KEY` | Opcional |
-| `RENDER` | Si está definida, el nodo actúa como relay (sin cliente de pulsos) |
+1. Una carpeta por app, nombre en minúsculas sin espacios
+2. `index.html` como entrada
+3. Llamadas a la API del mismo origen (`/api/...`) para evitar líos de CORS en local
+4. No mezclar lógica de ventas u otros verticales ajenos a laboratorio en este repo
 
-## Documentación
+---
 
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — arquitectura del nodo
-- [docs/labflow.md](docs/labflow.md) — LabFlow (dominio y roadmap)
-- [docs/development.md](docs/development.md) — desarrollo y tests
-- [docs/GUIA.md](docs/GUIA.md) — guía de uso del nodo
+## API LabFlow (referencia rápida)
+
+```text
+GET  /api/labflow/stats
+GET  /api/labflow/workflows
+GET  /api/labflow/root
+GET  /api/labflow/samples
+POST /api/labflow/samples
+GET  /api/labflow/samples/:id
+POST /api/labflow/samples/:id/transition
+GET  /api/labflow/samples/:id/events
+GET  /api/labflow/verify/:id
+GET  /api/labflow/qr/:id
+POST /api/labflow/auth/token
+GET  /verify/:id
+```
+
+### Crear una muestra
+
+```bash
+curl -s -X POST http://localhost:8080/api/labflow/samples \
+  -H "Content-Type: application/json" \
+  -H "X-Lab-Role: TECHNICIAN" \
+  -H "X-Lab-Org: lab-1" \
+  -d '{"type":"blood","workflow_id":"default","location":"Receiving-A"}'
+```
+
+### Avanzar estado
+
+```bash
+curl -s -X POST http://localhost:8080/api/labflow/samples/<id>/transition \
+  -H "Content-Type: application/json" \
+  -H "X-Lab-Role: TECHNICIAN" \
+  -H "X-Lab-Org: lab-1" \
+  -d '{"to_status":"ASSIGNED"}'
+```
+
+### Token (cuando `LABFLOW_REQUIRE_AUTH=true`)
+
+```bash
+curl -s -X POST http://localhost:8080/api/labflow/auth/token \
+  -H "Content-Type: application/json" \
+  -d '{"agent_id":"tech-1","roles":["TECHNICIAN"],"org_id":"lab-1"}'
+# Luego: Authorization: Bearer <token>
+```
+
+En desarrollo, sin token, bastan las cabeceras `X-Lab-Role`, `X-Lab-Org` y `X-Lab-Actor`.
+
+---
+
+## Roles
+
+| Rol | Alcance típico |
+|-----|----------------|
+| `LAB_ADMIN` | Administración completa |
+| `LAB_MANAGER` | Gestión del laboratorio |
+| `TECHNICIAN` | Alta y avance operativo (ASSIGNED, IN_PROGRESS, FLAGGED) |
+| `REVIEWER` | QC, RELEASED, ARCHIVED, FLAGGED |
+| `CLIENT` | Consulta limitada a sus muestras |
+
+---
+
+## Workflows
+
+| ID | Notas |
+|----|--------|
+| `default` | Flujo general de laboratorio |
+| `water-testing` | Permite reensayo `QC_REVIEW → IN_PROGRESS` |
+| `clinical` | Tras `FLAGGED` solo cabe `ARCHIVED` |
+
+La muestra guarda `workflow_id`; las transiciones se validan contra ese flujo.
+
+---
+
+## Persistencia e integridad
+
+- Cada muestra y cada evento de custodia se guarda como bloque con **CID**
+- El índice LabFlow también es un bloque; su CID aparece en `GET /api/labflow/root`
+- Tras reiniciar el proceso, el índice se recupera desde `alset_data/labflow_root.cid` y el almacén de bloques
+
+No hay blockchain ni criptomoneda: solo direccionamiento por contenido del runtime.
+
+---
+
+## Estructura del repositorio
+
+```text
+cmd/prisma-tec/     entrada del proceso
+internal/labflow/   dominio de muestras, custodia, roles, workflows
+internal/node/      runtime HTTP, red, bloques CID
+static/apps/        aplicaciones web (labflow, config, …)
+docs/               arquitectura y guías
+docker-compose.yml
+```
+
+Desarrollo y tests: [docs/development.md](docs/development.md)  
+LabFlow en detalle: [docs/labflow.md](docs/labflow.md)
+
+```bash
+go test ./internal/labflow/ -count=1
+```
+
+---
 
 ## Roadmap
 
 | Fase | Contenido |
 |------|-----------|
-| **1** | LabFlow MVP (muestras, custody, verify, dashboard) |
-| **2** | BioPassport |
-| **3** | Decision Engine integration |
-| **4** | Instrument integrations |
-| **5** | Multi-lab / nodos distribuidos |
-| **6** | BioResearch ecosystem |
+| 1 | LabFlow (en curso: muestras, IPFS/CID, roles, workflows) |
+| 2 | BioPassport |
+| 3 | Motor de decisión (PASS / REVIEW / FLAG) |
+| 4 | Integración con instrumentos |
+| 5 | Varias sedes / instancias distribuidas |
+| 6 | BioResearch |
 
-## Licencia
+---
 
-Código de aplicación LabFlow y documentación de AlsetBio: ver `LICENSE`.
+## Licencia y origen
 
-El runtime del nodo deriva del diseño Alset/PrismaTec. Estado de licencia del nodo de origen: **verificar en el repositorio de origen**; este repo no reclama derechos exclusivos sobre el ecosistema Alset completo.
-
-## Relación con PrismaTec
-
-| Repo | Uso |
-|------|-----|
-| [yecharlot/PrismaTec](https://github.com/yecharlot/PrismaTec) | Nodo + Alset Sales Hub |
-| **yecharlot/AlsetBio** | Nodo + vertical laboratorio (LabFlow) |
-
-No sincronizar a ciegas cambios de Sales Hub hacia aquí ni al revés.
+Ver [LICENSE](LICENSE). El motor de ejecución sigue el modelo descrito en [PrismaTec](https://github.com/yecharlot/PrismaTec). El trabajo de producto de laboratorio (LabFlow y documentación de este repo) se mantiene aquí, separado del vertical comercial de ventas.
